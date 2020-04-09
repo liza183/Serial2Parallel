@@ -1,5 +1,5 @@
-# serial2parallel
-serial2parallel: Running serial scripts parallel on a MPI cluster
+# Serial2Parallel
+serial2parallel: Running serial scripts/binary parallel on a MPI cluster
 
 # How to use
 - You need to edit `scripts/scripts.txt` and add lines. Each line will be distributed across multiple nodes.

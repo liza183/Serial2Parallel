@@ -41,16 +41,13 @@ def threaded(client_socket, addr):
     total_no_connected+=1
     lock.release()
 
-    # 클라이언트가 접속을 끊을 때 까지 반복합니다. 
     while True: 
 
         try:
 
-            # 데이터가 수신되면 클라이언트에 다시 전송합니다.(에코)
             data = client_socket.recv(1024)
 
             if not data: 
-                print('Remaining scripts in que:', len(list_of_scripts))
                 print('Disconnected by ' + addr[0],':',addr[1])
                 lock.acquire()
                 total_no_connected-=1
@@ -63,9 +60,7 @@ def threaded(client_socket, addr):
                     
                 break
 
-            #print('Received from ' + addr[0],':',addr[1] , data.decode())
-            lock.acquire() # will block if lock is already held
-                
+            lock.acquire()
             list_of_popped = []
             
             if(data.decode()=="pull"):    
@@ -76,9 +71,7 @@ def threaded(client_socket, addr):
                         popped = list_of_scripts.pop()
                         list_of_popped.append(popped)
                 print(len(list_of_scripts), "scripts remaining in que")
-                #print(list_of_popped)
             
-            #client_socket.send(data) 
             if len(list_of_popped)==0:
                 message = b'done'
             else:
@@ -87,9 +80,7 @@ def threaded(client_socket, addr):
             client_socket.send(message) 
         
             lock.release()
-        except SystemExit as e:
-            sys.exit()
-
+        
         except ConnectionResetError as e:
 	
             print('Remaining scripts in que:', len(list_of_scripts))
@@ -119,15 +110,12 @@ if __name__=="__main__":
     server_socket.listen() 
 
     print('Serial2Parallel Server v0.1 by Matt Lee')
-    print('Waiting for client request ..')
     print()
     print('Please add lines in scripts/scripts.txt')    
     print(len(list_of_scripts), "scripts ready in que")
     print("--------------------------------------------")
-
-    # 클라이언트가 접속하면 accept 함수에서 새로운 소켓을 리턴합니다.
-
-    # 새로운 쓰레드에서 해당 소켓을 사용하여 통신을 하게 됩니다. 
+    print('Waiting for client request ..')
+    
     while True: 
 
         client_socket, addr = server_socket.accept() 

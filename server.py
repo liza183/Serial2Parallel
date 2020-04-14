@@ -1,34 +1,42 @@
 import socket 
 import threading
 import os
+import sys
+from _thread import *
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--host',default='localhost',
+                    help='server hostname')
+parser.add_argument('--port',default=9999,
+                    help='server port')
+parser.add_argument('--chunksize',default=1, type=int,
+                    help='how many scripts to deligate to client at once')
 
-def get_jobs_ready():
-    global list_of_jobs
-    list_of_jobs = []
+args = parser.parse_args()
+
+
+### Global Variables ##
+
+no_of_pop_scripts = args.chunksize
+total_no_connected = 0
+lock = threading.Lock()
+
+### Getting the scripts ready
+
+def get_scripts_ready():
+    global list_of_scripts
+    list_of_scripts = []
     f = open("scripts/scripts.txt","r")
     while True:
         line = f.readline()
         if not line: break
-        list_of_jobs.append(line.strip())    
+        list_of_scripts.append(line.strip())    
 
-from _thread import *
-
-no_of_pop_jobs = 1
-global list_of_jobs
-get_jobs_ready()
-#list_of_jobs = list_of_jobs[:10]
-print(len(list_of_jobs), "scripts ready in que")
-
-# 쓰레드에서 실행되는 코드입니다. 
-global total_no_connected
-total_no_connected = 0
-
-# 접속한 클라이언트마다 새로운 쓰레드가 생성되어 통신을 하게 됩니다. 
 def threaded(client_socket, addr): 
 
     global total_no_connected
+    global lock
     print('Connected by :', addr[0], ':', addr[1]) 
-    lock = threading.Lock()
     lock.acquire()
     total_no_connected+=1
     lock.release()
@@ -42,31 +50,32 @@ def threaded(client_socket, addr):
             data = client_socket.recv(1024)
 
             if not data: 
-                print('Remaining jobs in que:', len(list_of_jobs))
+                print('Remaining scripts in que:', len(list_of_scripts))
                 print('Disconnected by ' + addr[0],':',addr[1])
-                lock = threading.Lock()
                 lock.acquire()
                 total_no_connected-=1
                 print("Total # of remaining processes:", total_no_connected)
                 lock.release()
+
+                if total_no_connected==0:
+                    print("ALL DONE.")
+                    os._exit(0)
+                    
                 break
 
-            print('Received from ' + addr[0],':',addr[1] , data.decode())
-            lock = threading.Lock()
+            #print('Received from ' + addr[0],':',addr[1] , data.decode())
             lock.acquire() # will block if lock is already held
                 
             list_of_popped = []
             
             if(data.decode()=="pull"):    
-                print("pop jobs from list_of_jobs")
-
-                for i in range(0,no_of_pop_jobs):
-                    if len(list_of_jobs)==0:
+                for i in range(0,no_of_pop_scripts):
+                    if len(list_of_scripts)==0:
                         break
                     else:
-                        popped = list_of_jobs.pop()
+                        popped = list_of_scripts.pop()
                         list_of_popped.append(popped)
-                print(len(list_of_jobs), "jobs remaining in que")
+                print(len(list_of_scripts), "scripts remaining in que")
                 #print(list_of_popped)
             
             #client_socket.send(data) 
@@ -78,12 +87,13 @@ def threaded(client_socket, addr):
             client_socket.send(message) 
         
             lock.release()
+        except SystemExit as e:
+            sys.exit()
 
         except ConnectionResetError as e:
 	
-            print('Remaining jobs in que:', len(list_of_jobs))
+            print('Remaining scripts in que:', len(list_of_scripts))
             print('Disconnected by ' + addr[0],':',addr[1])
-            lock = threading.Lock()
             lock.acquire()
             total_no_connected-=1
             print("Total # of remaining processes:", total_no_connected)
@@ -94,24 +104,33 @@ def threaded(client_socket, addr):
     client_socket.close() 
 
 
-HOST = 'localhost'
-PORT = 9999
+## Getting the scripts que ready
 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-server_socket.bind((HOST, PORT)) 
-server_socket.listen() 
+get_scripts_ready()
 
-print('Scripts pool server v. 0.0.1 by Matt Lee')
+if __name__=="__main__":
 
+    HOST = args.host
+    PORT = args.port
 
-# 클라이언트가 접속하면 accept 함수에서 새로운 소켓을 리턴합니다.
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((HOST, PORT)) 
+    server_socket.listen() 
 
-# 새로운 쓰레드에서 해당 소켓을 사용하여 통신을 하게 됩니다. 
-while True: 
+    print('Serial2Parallel Server v0.1 by Matt Lee')
+    print('Waiting for client request ..')
+    print()
+    print('Please add lines in scripts/scripts.txt')    
+    print(len(list_of_scripts), "scripts ready in que")
+    print("--------------------------------------------")
 
-    print('Waiting for request ..')
-    client_socket, addr = server_socket.accept() 
-    start_new_thread(threaded, (client_socket, addr)) 
+    # 클라이언트가 접속하면 accept 함수에서 새로운 소켓을 리턴합니다.
 
-server_socket.close() 
+    # 새로운 쓰레드에서 해당 소켓을 사용하여 통신을 하게 됩니다. 
+    while True: 
+
+        client_socket, addr = server_socket.accept() 
+        start_new_thread(threaded, (client_socket, addr)) 
+
+    server_socket.close() 

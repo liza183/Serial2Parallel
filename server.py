@@ -7,7 +7,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--host',default='localhost',
                     help='server hostname')
-parser.add_argument('--port',default=9999,
+parser.add_argument('--port',default=9999, type=int,
                     help='server port')
 parser.add_argument('--chunksize',default=1, type=int,
                     help='how many scripts to deligate to client at once')

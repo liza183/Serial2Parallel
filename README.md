@@ -1,9 +1,34 @@
 # Serial2Parallel
-serial2parallel: Running any serial scripts in parallel on a MPI cluster!
+
+Serial2Parallel: Running any serial scripts in parallel on an MPI cluster!
+
+In the era of machine learning, we often need to run the same code/script many times with little or no variations (e.g., performance evaluation, data preprocessing, data generation, hyperparameter tuning, etc.). It is not a problem when you just need to do that a few times, but when the number of repetitions becomes very large, 
+it can be a daunting task. 
+
+And yes, that often happens, for example, you may want to run thousands of machine learning training for finding the best hyperparameters. There are tools and libraries to help users to write their parallel codes, but this can be a problem if, 
+
+- Users are not programming experts.
+- Users need to use existing software (e.g., commercial simulation tool) that cannot be modified.
+
+This `Serial2Parallel` provides an easy way for users to be able to run many numbers of 
+any serial code/scripts in a parallel manner across multiple nodes in an MPI cluster.
 
 # How to use
-- You need to edit `scripts/scripts.txt` and add lines. Each line will be distributed and run across multiple nodes.
-- You need to run server.py first. The server manages the script pool and handles requests from clients.
+
+```
+usage: server.py [-h] [--host HOST] [--script SCRIPT] [--port PORT] [--chunksize CHUNKSIZE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --host HOST           server hostname
+  --script SCRIPT       script file location
+  --port PORT           server port
+  --chunksize CHUNKSIZE
+                        how many scripts to deligate to client at once
+
+```
+- Please edit `scripts.sh` and add commands as you need. Each line will be distributed and run across multiple nodes.
+- Running `server.py` will get your scripts to be added to the script pool and wait for requests from clients.
 
 ```
 $ python server.py --host localhost --port 9999 --chunksize 1
@@ -19,7 +44,10 @@ Waiting for client request ..
 - `host` is for the server's hostname. The default value is `localhost`
 - `port` is for the server's port number. The default value is 9999.
 
-- Now you can run the scripts using `mpiexec` by doing
+- Now you can run the scripts in parallel using MPI. For instance, `mpiexec -n 4 python s2p.py --host localhost --port 9999`
+will start up 4 processes. You can specify your hostname and port number.
+- Note that clients need to be set up appropriately for the commands that you included in the `scripts.sh`
+
 ```
 $ mpiexec -n 4 python s2p.py --host localhost --port 9999
 MPI client started running scripts in parallel: this process is rank = 3, total # of processes: 4
@@ -36,6 +64,7 @@ MPI client started running scripts in parallel: this process is rank = 2, total 
 1 / 1  rank =  1   5.008861303329468  sec elapsed to process a script```
 ...
 ```
+
 - Enjoy!
 
 # Note

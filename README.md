@@ -1,4 +1,3 @@
-![](./img/overview.png)
 # Serial2Parallel
 
 Serial2Parallel: Running any serial scripts in parallel on an MPI cluster!
